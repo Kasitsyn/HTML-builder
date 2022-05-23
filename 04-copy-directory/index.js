@@ -11,6 +11,7 @@ const copyDir = () => {
       console.log(err);
     else {
       for (let file of files) {
+          
         fs.copyFile(path.join(__dirname, 'files', file.name), path.join(__dirname, 'files-copy', file.name), err => {
           if (err) throw err;
         });
