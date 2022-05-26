@@ -1,127 +1,72 @@
 const fs = require('fs');
 const path = require('path');
+const { mkdir, readFile, readdir, copyFile, writeFile, rm } = require('fs/promises');
 
-let template = '';
-let re = /{{+[a-w]+}}/gi;
+async function buildIndexPage(pathFrom, pathTo) {
 
-const rs = fs.createReadStream(path.join(__dirname, 'template.html'), 'utf-8');
+  let template = await readFile(path.join(pathFrom, 'template.html'), 'utf-8',
+    (error, content) => {
+      if (error) throw error;
+      return content;
+    }
+  );
 
-rs.on('data', chunk => template += chunk);
-rs.on('end', () => {
-  let header = '';
-  let articles = '';
-  let footer = '';
-  fs.readFile(path.join(__dirname, 'components', 'header.html'), (err, file) => {
-    header += file;
-    fs.readFile(path.join(__dirname, 'components', 'articles.html'), (err, file) => {
-      articles += file;
-      fs.readFile(path.join(__dirname, 'components', 'footer.html'), (err, file) => {
-        footer += file;
-        let newTemplate = template.replace(re, (text) => {
-          if (text === '{{header}}') {
-            return header;
-          } else if (text === '{{articles}}') {
-            return articles;
-          } else if (text === '{{footer}}') {
-            return footer;
-          }
-        });
-        fs.mkdir(path.join(__dirname, 'project-dist'), { recursive: true }, (err) => {
+  let components = await readdir(path.join(pathFrom, 'components'), { withFileTypes: true });
+
+  for (const component of components) {
+
+    const content = await readFile(path.join(pathFrom, 'components', component.name), 'utf-8', (err, content) => {
+      if (err) throw err;
+      return content;
+    });
+
+    template = template.replace(`{{${path.parse(path.join(pathFrom, 'components', component.name)).name}}}`, content);
+  }
+
+  await rm(pathTo, { force: true, recursive: true });
+  await mkdir(pathTo, { recursive: true });
+  writeFile(path.join(pathTo, 'index.html'), template);
+
+  buildStyles(path.join(pathFrom, 'styles'), path.join(pathTo, 'style.css'));
+  copyAssetsFiles(path.join(pathFrom, 'assets'), path.join(pathTo, 'assets'));
+
+}
+
+async function buildStyles(pathFrom, pathTo) {
+
+  const styleFiles = await readdir(pathFrom, { withFileTypes: true });
+  const ws = fs.createWriteStream(pathTo);
+
+  for (const file of styleFiles) {
+
+    if (file.isFile() && path.extname(file.name) === '.css') {
+      const rs = fs.createReadStream(
+        path.join(pathFrom, file.name),
+        'utf-8'
+      );
+
+      rs.on('data', (chunk) => {
+        ws.write(`\n${chunk}`, (err) => {
           if (err) throw err;
-        });
-        fs.writeFile(
-          path.join(__dirname, 'project-dist', 'index.html'),
-          `${newTemplate}`,
-          (err) => {
-            if (err) throw err;
-
-          }
-        );
-
-        fs.readdir(path.join(__dirname, 'styles'), { withFileTypes: true }, (err, files) => {
-          if (err)
-            console.log(err);
-          else {
-            for (let file of files) {
-              if (file.isFile() && path.extname(file.name) === '.css') {
-                const rs = fs.createReadStream(path.join(__dirname, 'styles', file.name), 'utf-8');
-                rs.on('data', chunk => {
-                  fs.appendFile(
-                    path.join(__dirname, 'project-dist', 'style.css'),
-                    `${chunk}\n`,
-                    (err) => {
-                      if (err) throw err;
-                    }
-                  );
-                });
-              }
-            }
-          }
-        });
-        fs.mkdir(path.join(__dirname, 'project-dist', 'assets'), { recursive: true }, (err) => {
-          if (err) throw err;
-        });
-
-        fs.readdir(path.join(__dirname, 'assets', 'fonts'), { withFileTypes: true }, (err, files) => {
-          if (err)
-            console.log(err);
-          else {
-            fs.mkdir(path.join(__dirname, 'project-dist', 'assets', 'fonts'), { recursive: true }, (err) => {
-              if (err) throw err;
-            });
-            for (let file of files) {
-
-              fs.copyFile(path.join(__dirname, 'assets', 'fonts', file.name), path.join(__dirname, 'project-dist', 'assets', 'fonts', file.name), err => {
-                if (err) throw err;
-              });
-            }
-          }
-        });
-
-        fs.readdir(path.join(__dirname, 'assets', 'img'), { withFileTypes: true }, (err, files) => {
-          if (err)
-            console.log(err);
-          else {
-            fs.mkdir(path.join(__dirname, 'project-dist', 'assets', 'img'), { recursive: true }, (err) => {
-              if (err) throw err;
-            });
-            for (let file of files) {
-
-              fs.copyFile(path.join(__dirname, 'assets', 'img', file.name), path.join(__dirname, 'project-dist', 'assets', 'img', file.name), err => {
-                if (err) throw err;
-              });
-            }
-          }
-        });
-
-        fs.readdir(path.join(__dirname, 'assets', 'svg'), { withFileTypes: true }, (err, files) => {
-          if (err)
-            console.log(err);
-          else {
-            fs.mkdir(path.join(__dirname, 'project-dist', 'assets', 'svg'), { recursive: true }, (err) => {
-              if (err) throw err;
-            });
-            for (let file of files) {
-
-              fs.copyFile(path.join(__dirname, 'assets', 'svg', file.name), path.join(__dirname, 'project-dist', 'assets', 'svg', file.name), err => {
-                if (err) throw err;
-              });
-            }
-          }
         });
       });
-    });
-  });
 
+    }
+  }
+}
 
-});
+async function copyAssetsFiles(pathFrom, pathTo) {
 
+  const files = await readdir(pathFrom, { withFileTypes: true });
+  await mkdir(pathTo, { recursive: true });
 
+  for (const file of files) {
+    if (file.isDirectory()) {
+      copyAssetsFiles(path.join(pathFrom, file.name), path.join(pathTo, file.name));
+    } else copyFile(path.join(pathFrom, file.name), path.join(pathTo, file.name));
 
+  }
+}
 
-
-
-
-
-
+buildIndexPage(path.join(__dirname), path.join(__dirname, 'project-dist'));
 

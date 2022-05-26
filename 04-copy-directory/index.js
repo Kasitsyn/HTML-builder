@@ -14,20 +14,20 @@ const copyDir = () => {
             fs.readdir(path.join(__dirname, 'files-copy'), { withFileTypes: true }, (err, files) => {
               if (err) throw err;
               if (!files.length) {
-                copyfile()
+                copyfile();
               }
-            })
-          })
+            });
+          });
         }
-      })
+      });
     } else {
       fs.mkdir(path.join(__dirname, 'files-copy'), { recursive: true }, (err) => {
         if (err) throw err;
-        copyfile()
+        copyfile();
       });
     }
 
-  })
+  });
 
   function copyfile() {
     fs.readdir(path.join(__dirname, 'files'), { withFileTypes: true }, (err, files) => {
