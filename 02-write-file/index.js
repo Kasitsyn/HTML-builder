@@ -20,12 +20,12 @@ fs.writeFile(
 
 rl.on('line', input => {
 
-  
+
 
   if (input.toLowerCase() === 'exit') {
-    console.log('Thank you, bye');
+    toExit()
     rl.close();
-    return;
+    // return;
   }
 
   fs.appendFile(
@@ -33,15 +33,17 @@ rl.on('line', input => {
     `${input}\n`,
     (err) => {
       if (err) throw err;
-            
+
     }
   );
 });
 
-process.on('exit', () => {
-  console.log('Thank you, bye');
-  exit();
-});
-
+const toExit = () => {
+  process.on('exit', () => {
+    console.log('Thank you, bye');
+    exit();
+  });
+}
+toExit()
 
 
